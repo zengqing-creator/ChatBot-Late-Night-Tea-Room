@@ -4,8 +4,14 @@
 #include <cstdlib>
 #include <algorithm>
 #include <iostream>
+#include <sstream>
+#include <fstream>
+#include <unordered_map>
+#include <mutex>
+#include <thread>
+#include <condition_variable>
+#include <deque>
 
-// 环境变量可能缺失，std::getenv 会返回 nullptr，直接用其构造 std::string 会在 main 之前崩溃
 namespace {
 const char* env_or_empty(const char* name) {
     const char* value = std::getenv(name);
@@ -13,12 +19,96 @@ const char* env_or_empty(const char* name) {
 }
 }
 
+namespace {
+struct EmbeddingJob {
+    std::shared_ptr<SQLiteDB> db;
+    int msg_id;
+    std::string session_id;
+    std::string user_id;
+    std::string content;
+};
+
+std::mutex g_emb_mutex;
+std::condition_variable g_emb_cv;
+std::deque<EmbeddingJob> g_emb_queue;
+bool g_emb_stop = false;
+std::thread g_emb_worker;
+std::once_flag g_emb_start_flag;
+
+void embedding_worker_loop() {
+    for (;;) {
+        EmbeddingJob job;
+        {
+            std::unique_lock<std::mutex> lock(g_emb_mutex);
+            g_emb_cv.wait(lock, [] { return g_emb_stop || !g_emb_queue.empty(); });
+            if (g_emb_stop) return;   // 关闭时丢弃未处理任务，快速退出
+            job = std::move(g_emb_queue.front());
+            g_emb_queue.pop_front();
+        }
+        auto emb = get_embedding(job.content);
+        if (!emb.empty() && job.msg_id > 0 && job.db) {
+            job.db->saveEmbedding(job.msg_id, job.session_id, job.user_id, emb);
+        }
+    }
+}
+
+void ensure_embedding_worker_started() {
+    std::call_once(g_emb_start_flag, [] {
+        g_emb_worker = std::thread(embedding_worker_loop);
+    });
+}
+} // namespace
+
+void enqueue_embedding_job(std::shared_ptr<SQLiteDB> db, int msg_id,
+                           const std::string& session_id, const std::string& user_id,
+                           const std::string& content) {
+    ensure_embedding_worker_started();
+    {
+        std::lock_guard<std::mutex> lock(g_emb_mutex);
+        g_emb_queue.push_back({db, msg_id, session_id, user_id, content});
+    }
+    g_emb_cv.notify_one();
+}
+
+void shutdown_embedding_worker() {
+    {
+        std::lock_guard<std::mutex> lock(g_emb_mutex);
+        g_emb_stop = true;
+    }
+    g_emb_cv.notify_all();
+    if (g_emb_worker.joinable()) g_emb_worker.join();
+}
+
 //API配置
 extern const std::string API_KEY = env_or_empty("DASHSCOPE_API_KEY");
 extern const std::string API_ENDPOINT = "https://dashscope.aliyuncs.com";
 extern const std::string API_PATH = "/compatible-mode/v1/chat/completions";
-extern const std::string WORKSPACE_ID = env_or_empty("DASHSCOPE_WORKSPACE_ID");
-extern const std::string VOICE_ID = env_or_empty("DASHSCOPE_VOICE_ID");
+// 默认音色：前端创建角色时已按性别写入 session.voice_id，这里仅作为旧会话/未指定时的兜底
+extern const std::string VOICE_ID = "longanhuan_v3.1";
+
+// TLS：加载CA证书包
+static std::string find_ca_bundle() {
+    const char* env = std::getenv("CHATBOT_CA_BUNDLE");
+    if (env && *env) { std::ifstream f(env); if (f.good()) return env; }
+    const char* ssl = std::getenv("SSL_CERT_FILE");
+    if (ssl && *ssl) { std::ifstream f(ssl); if (f.good()) return ssl; }
+    const char* candidates[] = {
+        "D:/python/Lib/site-packages/certifi/cacert.pem",
+        "cacert.pem",
+    };
+    for (const char* p : candidates) {
+        std::ifstream f(p);
+        if (f.good()) return p;
+    }
+    return "";
+}
+
+static void configure_https_client(httplib::Client& client) {
+    client.enable_server_certificate_verification(true);
+    std::string ca = find_ca_bundle();
+    if (!ca.empty()) client.set_ca_cert_path(ca);
+    else std::cerr << "[警告] 未找到 CA 证书包，TLS 证书校验可能失败" << std::endl;
+}
 
 //工具函数
 std::string get_current_time(const std::string& format) {
@@ -63,13 +153,25 @@ json get_tools_definition() {
                     {"required", {}}
                 }}
             }}
+        },
+        {
+            {"type","function"},
+            {"function", {
+                {"name","send_meme"},
+                {"description","当对话适合用表情包回应时调用，发送一张表情包给用户。可用标签：开心、无语、委屈、生气、害羞、得意、尴尬、安慰、敷衍。"},
+                {"parameters", {
+                {"type","object"},
+                {"properties", {{"tag", {{"type","string"},{"description","情绪/场景标签"}}}}},
+                {"required", {"tag"}}
+                }}
+            }}
         }
     });
 }
 
 
 //核心对话函数
-std::string call_ai_with_tools(Conversation& conv, std::function<void(const std::string&)> on_chunk) {
+std::string call_ai_with_tools(Conversation& conv, std::function<void(const std::string&)> on_chunk, std::string* out_image_url) {
     if (API_KEY.empty())
         return "错误：找不到 API_KEY 环境变量";
 
@@ -83,7 +185,7 @@ std::string call_ai_with_tools(Conversation& conv, std::function<void(const std:
     }
 
     std::vector<float> query_embedding;
-    if (!user_query.empty()) {
+    if (!user_query.empty() && !conv.isVoiceMode()) {
         query_embedding = get_embedding(user_query);
         if (!query_embedding.empty()) {
             auto db = conv.getDB();
@@ -108,7 +210,7 @@ std::string call_ai_with_tools(Conversation& conv, std::function<void(const std:
 
     while (should_continue && max_iterations-- > 0) {
         accumulated_content.clear();
-        
+
         json request_body = {
             {"model", "qwen-plus"},
             {"messages", messages},
@@ -122,7 +224,7 @@ std::string call_ai_with_tools(Conversation& conv, std::function<void(const std:
         };
 
         httplib::Client client(API_ENDPOINT);
-        client.enable_server_certificate_verification(false);
+        configure_https_client(client);
         client.set_decompress(false);
         client.set_read_timeout(60, 0);
 
@@ -134,19 +236,19 @@ std::string call_ai_with_tools(Conversation& conv, std::function<void(const std:
 
         std::string finish_reason;
         json tool_calls_array = json::array();
-        std::string stream_buffer;
 
+        std::string stream_buffer;
         try {
             auto res = client.Post(API_PATH, headers, request_body.dump(), "application/json",
                 [&](const char* data, size_t data_length) {
-                    stream_buffer.append(data, data_length); 
-                    
+                    stream_buffer.append(data, data_length);
+
                     size_t pos = 0;
                     while ((pos = stream_buffer.find("data: ")) != std::string::npos) {
                         size_t end_pos = stream_buffer.find("\n", pos);
                         if (end_pos != std::string::npos) {
                             std::string json_str = stream_buffer.substr(pos + 6, end_pos - (pos + 6));
-                            
+
                             if (!json_str.empty() && json_str.back() == '\r') {
                                 json_str.pop_back();
                             }
@@ -158,16 +260,16 @@ std::string call_ai_with_tools(Conversation& conv, std::function<void(const std:
                                         auto& choice = response["choices"][0];
                                         if (choice.contains("finish_reason") && !choice["finish_reason"].is_null())
                                             finish_reason = choice["finish_reason"].get<std::string>();
-                                            
+
                                         if (choice.contains("delta")) {
                                             auto& delta = choice["delta"];
-                                            
+
                                             if (delta.contains("content") && !delta["content"].is_null()) {
                                                 std::string content = delta["content"].get<std::string>();
                                                 accumulated_content += content;
                                                 if (on_chunk) on_chunk(content);
                                             }
-                                            
+
                                             if (delta.contains("tool_calls")) {
                                                 for (auto& tc : delta["tool_calls"]) {
                                                     int index = tc["index"].get<int>();
@@ -184,8 +286,12 @@ std::string call_ai_with_tools(Conversation& conv, std::function<void(const std:
                                                     } else {
                                                         if (tc["function"].contains("arguments"))
                                                             (*it)["function"]["arguments"] += tc["function"]["arguments"].get<std::string>();
-                                                        if (tc.contains("id")) (*it)["id"] = tc["id"];
-                                                        if (tc["function"].contains("name"))
+
+                                                        if (tc.contains("id") && tc["id"].is_string() && !tc["id"].get<std::string>().empty())
+                                                            (*it)["id"] = tc["id"];
+
+                                                        if (tc["function"].contains("name") && tc["function"]["name"].is_string() &&
+                                                            !tc["function"]["name"].get<std::string>().empty())
                                                             (*it)["function"]["name"] = tc["function"]["name"];
                                                     }
                                                 }
@@ -225,7 +331,14 @@ std::string call_ai_with_tools(Conversation& conv, std::function<void(const std:
                     } catch (...) { args = json::object(); }
                     std::string result;
                     auto it = tool_functions.find(tool_name);
-                    result = (it != tool_functions.end()) ? it->second(args) : "错误：未知工具 " + tool_name;
+                    if (it != tool_functions.end()) {
+                        args["__session_id"] = conv.getSessionId();
+                        result = it->second(args);
+                    } else {
+                        result = "错误：未知工具 " + tool_name;
+                    }
+                    if (tool_name == "send_meme" && out_image_url && !result.empty())
+                        *out_image_url = result; // 暂存图片 URL
                     json tool_msg;
                     tool_msg["role"] = "tool";
                     tool_msg["tool_call_id"] = tc["id"];
@@ -255,7 +368,7 @@ std::string call_llm_sync(const std::string& user_prompt) {
     json messages = json::array();
     messages.push_back({{"role", "system"}, {"content", "你是一个专业的摘要生成助手。"}});
     messages.push_back({{"role", "user"}, {"content", user_prompt}});
-    
+
     json request_body = {
         {"model", "qwen-plus"},
         {"messages", messages},
@@ -263,13 +376,11 @@ std::string call_llm_sync(const std::string& user_prompt) {
         {"repetition_penalty", 1.2},
         {"presence_penalty", 0.6},
         {"max_tokens", 2000},
-        {"stream", false},
-        {"tools", get_tools_definition()},
-        {"tool_calling", "auto"}
+        {"stream", false}
     };
 
     httplib::Client client(API_ENDPOINT);
-    client.enable_server_certificate_verification(false);
+    configure_https_client(client);
     client.set_read_timeout(15, 0);
 
     httplib::Headers headers = {
@@ -291,16 +402,101 @@ std::string call_llm_sync(const std::string& user_prompt) {
     return "";
 }
 
+std::string call_vision(const std::string& image_data_url) {
+    if (API_KEY.empty() || image_data_url.empty()) return "";
+
+    // VL 结果缓存：同一张图片只识别一次，避免重复调用花钱（步骤20）
+    static std::unordered_map<std::string, std::string> cache;
+    static std::mutex cache_mtx;
+    {
+        std::lock_guard<std::mutex> lock(cache_mtx);
+        auto it = cache.find(image_data_url);
+        if (it != cache.end()) return it->second;
+    }
+
+    json content = json::array({
+        {{"type", "image_url"}, {"image_url", {{"url", image_data_url}}}},
+        {{"type", "text"}, {"text", "识别这张表情包，严格按 JSON 输出：{\"emotion\":\"情绪\",\"keywords\":[\"关键词\"],\"text_on_image\":\"配文\",\"description\":\"一句话含义\"}。只输出 JSON，不要任何额外文字。"}}
+    });
+    json messages = json::array({
+        {{"role", "user"}, {"content", content}}
+    });
+    json request_body = {
+        {"model", "qwen-vl-plus"},
+        {"messages", messages},
+        {"temperature", 0.5},
+        {"max_tokens", 1000},
+        {"stream", false}
+    };
+
+    httplib::Client client(API_ENDPOINT);
+    configure_https_client(client);
+    client.set_read_timeout(30, 0);
+
+    httplib::Headers headers = {
+        {"Authorization", "Bearer " + API_KEY},
+        {"Accept", "application/json"},
+        {"X-DashScope-Wait-Timeout", "10"}
+    };
+
+    std::string result;
+    try {
+        auto res = client.Post(API_PATH, headers, request_body.dump(), "application/json");
+        if (res && res->status == 200) {
+            json response = json::parse(res->body);
+            if (response.contains("choices") && !response["choices"].empty()) {
+                auto& choice = response["choices"][0];
+                if (choice.contains("message") && choice["message"].contains("content"))
+                    result = choice["message"]["content"].get<std::string>();
+            }
+        }
+    } catch (...) {}
+
+    if (!result.empty()) {
+        std::lock_guard<std::mutex> lock(cache_mtx);
+        cache[image_data_url] = result;
+    }
+    return result;
+}
+
+std::string stripNarration(const std::string& text) {
+    std::string out;
+    out.reserve(text.size());
+    int depth = 0;
+    for (char c : text) {
+        if (c == '(' || c == '（') { depth++; continue; }
+        if (c == ')' || c == '）') { if (depth > 0) depth--; continue; }
+        if (depth == 0) out.push_back(c);
+    }
+
+    // 去掉旁白剥离后产生的空行和行首尾空白
+    std::string result;
+    std::istringstream iss(out);
+    std::string line;
+    bool first = true;
+    while (std::getline(iss, line)) {
+        size_t a = line.find_first_not_of(" \t\r");
+        if (a == std::string::npos) continue;
+        size_t b = line.find_last_not_of(" \t\r");
+        line = line.substr(a, b - a + 1);
+        if (!first) result += "\n";
+        result += line;
+        first = false;
+    }
+    return result;
+}
+
 std::vector<float> get_embedding(const std::string& text) {
     if (API_KEY.empty()) return {};
 
     json request_body = {
         {"model", "text-embedding-v4"},
-        {"input", {text}}
+        {"input", {text}},
+        {"dimensions", 1024}
     };
 
     httplib::Client client(API_ENDPOINT);
-    client.enable_server_certificate_verification(false);
+    configure_https_client(client);
     client.set_read_timeout(15, 0);
 
     httplib::Headers headers = {
@@ -332,7 +528,7 @@ std::string synthesize_speech(const std::string& api_key,
         std::cerr << "[DEBUG] voice_id = " << voice_id << std::endl;
 
         httplib::Client client("https://dashscope.aliyuncs.com");
-        client.enable_server_certificate_verification(false);
+        configure_https_client(client);
         client.set_read_timeout(15, 0);
         client.set_write_timeout(15, 0);
 

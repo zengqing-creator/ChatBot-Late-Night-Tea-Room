@@ -1,0 +1,48 @@
+# ---- 构建产物（CMake）----
+build/
+
+# ---- Python 虚拟环境与缓存 ----
+venv/
+__pycache__/
+*.py[cod]
+
+# ---- SQLite 运行时数据库（运行时生成，不入库）----
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ---- 大型二进制依赖（建议改用 git-lfs 或脚本下载）----
+ChatBot/faiss.dll
+
+# ---- IDE / 本地工具目录 ----
+.arts/
+.codeartsdoer/
+.idea/
+.vs/
+
+# ---- Machine-specific build paths ----
+ChatBot/config.local.bat
+ChatBot/config.runtime.bat
+ChatBot/**/config.runtime.bat
+ChatBot/Caddyfile
+.merkle-snapshot.json
+.vscode/
+ChatBot/.vscode/
+output/
+*.log
+*.wav
+*.env
+.env.*
+!*.env.example
+*.key
+*.p12
+*.pfx
+*.crt
+*.pem
+!ChatBot/certs/cacert.pem
+*.png
+!ChatBot/memes/*.png
+
+# Unused local Redis prototype; CMake builds src/RedisClient.cpp.
+ChatBot/src/ResidClient.cpp

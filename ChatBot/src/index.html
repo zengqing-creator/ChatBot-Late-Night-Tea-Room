@@ -337,27 +337,30 @@
         }
         .input-box:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .call-btn {
-            padding: 9px 18px;
-            border-radius: 999px;
-            font-size: 13px;
-            font-weight: 500;
+        .call-icon-btn {
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
         }
-        .call-btn-idle {
+        .call-icon-idle {
             background: rgba(143, 185, 142, 0.12);
             border: 1px solid rgba(143, 185, 142, 0.35);
             color: var(--ok);
         }
-        .call-btn-idle:hover { background: rgba(143, 185, 142, 0.22); transform: translateY(-1px); }
-        .call-btn-active {
-            background: rgba(224, 122, 95, 0.15);
-            border: 1px solid rgba(224, 122, 95, 0.4);
+        .call-icon-idle:hover { background: rgba(143, 185, 142, 0.24); transform: translateY(-1px); }
+        .call-icon-active {
+            background: rgba(224, 122, 95, 0.18);
+            border: 1px solid rgba(224, 122, 95, 0.45);
             color: var(--danger);
+            animation: pulseRingRed 1.6s infinite;
         }
-        .call-btn-active:hover { background: rgba(224, 122, 95, 0.28); }
-        .call-btn-disabled { opacity: 0.4; cursor: not-allowed; }
+        .call-icon-active:hover { background: rgba(224, 122, 95, 0.3); }
+        .call-icon-disabled { opacity: 0.4; cursor: not-allowed; }
 
         .send-btn {
             padding: 10px 26px;
@@ -456,6 +459,82 @@
         }
         .modal-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 18px -8px rgba(224, 162, 76, 0.6); }
 
+        /*表情包选择器*/
+        .meme-panel {
+            width: 60%;
+            max-height: 70vh;
+            background: linear-gradient(180deg, #26211a, #1c1812);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 20px;
+            box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8);
+            animation: popIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            overflow-y: auto;
+        }
+        .meme-panel-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 20px;
+            color: var(--ink);
+        }
+        .meme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+            gap: 10px;
+        }
+        .meme-cell {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 1px solid var(--line-soft);
+            background: rgba(0, 0, 0, 0.2);
+            transition: transform 0.15s ease, border-color 0.15s ease;
+        }
+        .meme-cell:hover { transform: translateY(-2px); border-color: var(--accent); }
+        .meme-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .meme-add {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-style: dashed;
+        }
+        .meme-add:hover { transform: translateY(-2px); border-color: var(--accent); }
+        .meme-add-plus {
+            font-size: 34px;
+            font-weight: 300;
+            line-height: 1;
+            color: var(--ink-faint);
+            user-select: none;
+        }
+        .pending-meme {
+            position: relative;
+            display: inline-flex;
+            margin-top: 10px;
+        }
+        .pending-meme-thumb {
+            height: 60px;
+            max-width: 160px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid var(--line-soft);
+        }
+        .pending-meme-remove {
+            position: absolute;
+            top: -9px;
+            right: -9px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: none;
+            background: var(--danger);
+            color: #fff;
+            font-size: 16px;
+            line-height: 22px;
+            text-align: center;
+            cursor: pointer;
+        }
+
         /*动画*/
         @keyframes msgIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -477,11 +556,184 @@
             0%, 100% { box-shadow: 0 0 0 0 rgba(143, 185, 142, 0.5); }
             50% { box-shadow: 0 0 0 6px rgba(143, 185, 142, 0); }
         }
+        @keyframes pulseRingRed {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(224, 122, 95, 0.5); }
+            50% { box-shadow: 0 0 0 6px rgba(224, 122, 95, 0); }
+        }
 
         .call-live {
             color: var(--ok);
             animation: pulseRing 1.6s infinite;
         }
+
+        /*语音通话界面*/
+        .call-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background:
+                radial-gradient(900px 600px at 50% 18%, rgba(224, 162, 76, 0.12), transparent 60%),
+                radial-gradient(700px 500px at 50% 100%, rgba(224, 122, 95, 0.08), transparent 55%),
+                linear-gradient(165deg, #1a1510 0%, #0e0c09 100%);
+            padding: 44px 24px 40px;
+        }
+        .call-top {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .call-avatar {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-display);
+            font-size: 36px;
+            font-weight: 600;
+            color: var(--accent-strong);
+            background: linear-gradient(135deg, #2b251c, #1c1913);
+            border: 1px solid var(--line);
+            box-shadow: 0 0 0 6px rgba(224, 162, 76, 0.06);
+            animation: pulseRing 1.8s infinite;
+        }
+        .call-name {
+            font-family: var(--font-display);
+            font-size: 26px;
+            font-weight: 600;
+            color: var(--ink);
+            letter-spacing: 0.02em;
+        }
+        .call-duration {
+            font-size: 15px;
+            color: var(--ink-dim);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.12em;
+        }
+        .call-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 18px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            transition: all 0.25s ease;
+        }
+        .call-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .call-status.listening {
+            background: rgba(88, 168, 106, 0.12);
+            color: #9fd6ab;
+            border: 1px solid rgba(88, 168, 106, 0.35);
+        }
+        .call-status.listening .call-status-dot {
+            background: #6fcf86;
+            animation: listenPulse 1.2s infinite;
+        }
+        .call-status.ai-speaking {
+            background: rgba(224, 162, 76, 0.12);
+            color: #e8c88a;
+            border: 1px solid rgba(224, 162, 76, 0.35);
+        }
+        .call-status.ai-speaking .call-status-dot {
+            background: #e0a24c;
+            animation: blink 1s infinite;
+        }
+        .call-status.connecting {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--ink-dim);
+            border: 1px solid var(--line);
+        }
+        .call-status.connecting .call-status-dot {
+            background: var(--ink-dim);
+            animation: blink 1s infinite;
+        }
+        @keyframes listenPulse {
+            0% { box-shadow: 0 0 0 0 rgba(111, 207, 134, 0.5); }
+            70% { box-shadow: 0 0 0 10px rgba(111, 207, 134, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(111, 207, 134, 0); }
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .call-body {
+            flex: 1;
+            width: 100%;
+            max-width: 620px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 28px 8px;
+        }
+        .call-hint {
+            text-align: center;
+            color: var(--ink-faint);
+            font-size: 14px;
+            margin-top: 40px;
+        }
+        .call-line {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-width: 80%;
+        }
+        .call-line-user { align-self: flex-end; align-items: flex-end; }
+        .call-line-ai { align-self: flex-start; align-items: flex-start; }
+        .call-line-role { font-size: 12px; color: var(--ink-faint); }
+        .call-line-text {
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 15px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .call-line-user .call-line-text {
+            background: linear-gradient(135deg, #f2bd6b 0%, #db943e 100%);
+            color: #241a0c;
+        }
+        .call-line-ai .call-line-text {
+            background: linear-gradient(180deg, #26211a, #1d1913);
+            color: var(--ink);
+            border: 1px solid var(--line-soft);
+        }
+        .call-bottom {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .call-hangup-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--danger);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 12px 30px -10px rgba(224, 122, 95, 0.7);
+            transition: all 0.2s ease;
+        }
+        .call-hangup-btn:hover { transform: scale(1.05); background: #e8896f; }
+        .call-hangup-btn:active { transform: scale(0.97); }
+        .call-hangup-label { font-size: 13px; color: var(--ink-faint); }
 
         @media (max-width: 720px) {
             body { padding: 0; }
@@ -547,6 +799,10 @@
                         <div :class="['bubble', msg.role === 'user' ? 'bubble-user' : 'bubble-ai']">
                             {{ msg.content }}
 
+                            <img v-if="msg.image_url" :src="msg.image_url"
+                                 class="mt-2 rounded-lg max-h-48 cursor-pointer"
+                                 @click="previewImage = msg.image_url">
+
                             <div v-if="msg.role === 'assistant'" class="mt-3 pt-2 border-t border-white/5 flex justify-end">
                                 <button @click="playVoice(msg.content, index)"
                                 :disabled="msg.isPlaying"
@@ -572,21 +828,39 @@
 
                 <!-- 输入区 -->
                 <div class="input-shell flex flex-col">
+                    <div class="flex items-center space-x-2 mb-2">
+                        <button @click="toggleVoiceCall" :disabled="!currentSessionId"
+                                :class="['call-icon-btn',
+                                        isInCall ? 'call-icon-active' : 'call-icon-idle',
+                                        !currentSessionId ? 'call-icon-disabled' : '']"
+                                :title="isInCall ? '挂断' : '语音通话'">
+                            <svg v-if="!isInCall" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                            </svg>
+                            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17">
+                                <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/>
+                                <line x1="22" y1="2" x2="2" y2="22"/>
+                            </svg>
+                        </button>
+                        <button @click="toggleMemePanel" class="call-icon-btn call-icon-idle" title="表情包">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                                <line x1="9" y1="9" x2="9.01" y2="9"/>
+                                <line x1="15" y1="9" x2="15.01" y2="9"/>
+                            </svg>
+                        </button>
+                        <span v-if="isInCall" class="text-sm call-live font-semibold">● 通话中</span>
+                    </div>
                     <textarea v-model="inputMessage" @keyup.enter.exact="sendMessage" :disabled="!currentSessionId || isLoading"
                             class="input-box"
                             placeholder="Enter 发送，Shift+Enter 换行"></textarea>
-                    <div class="flex items-center justify-between mt-3">
-                        <div class="flex items-center space-x-2">
-                            <button @click="toggleVoiceCall" :disabled="!currentSessionId"
-                                    :class="['call-btn',
-                                            isInCall ? 'call-btn-active' : 'call-btn-idle',
-                                            !currentSessionId ? 'call-btn-disabled' : '']">
-                            <span v-if="isInCall">⏹ 挂断</span>
-                            <span v-else>🎙 语音通话</span>
-                            </button>
-                            <span v-if="isInCall" class="text-sm call-live font-semibold">● 通话中</span>
-                        </div>
-                        <button @click="sendMessage" :disabled="!currentSessionId || isLoading || !inputMessage.trim()"
+                    <div v-if="pendingMeme" class="pending-meme">
+                        <img :src="'/memes/' + pendingMeme.file_path" class="pending-meme-thumb" alt="">
+                        <button @click="pendingMeme = null" class="pending-meme-remove" title="移除表情">×</button>
+                    </div>
+                    <div class="flex items-center justify-end mt-3 space-x-2">
+                        <button @click="sendMessage" :disabled="!currentSessionId || isLoading || (!inputMessage.trim() && !pendingMeme)"
                                 class="send-btn">发送 ⏎
                         </button>
                     </div>
@@ -598,12 +872,19 @@
                         <h3 class="modal-title">创建新角色</h3>
                         <div class="mb-4">
                             <label class="block text-sm text-gray-400 mb-1">角色名称 / 会话ID (必填)</label>
-                            <input v-model="newSessionId" type="text" class="input-box w-full" placeholder="例如：小美、项目经理">
+                            <input v-model="newSessionId" type="text" class="input-box w-full">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm text-gray-400 mb-1">角色性别</label>
+                            <div class="flex items-center space-x-4">
+                                <label class="cursor-pointer"><input type="radio" name="gender" value="女" v-model="newGender"> 女</label>
+                                <label class="cursor-pointer"><input type="radio" name="gender" value="男" v-model="newGender"> 男</label>
+                            </div>
                         </div>
                         <div class="mb-6">
                             <label class="block text-sm text-gray-400 mb-1">专属音色 ID (可选)</label>
                             <input v-model="newVoiceId" type="text" class="input-box w-full" placeholder="填 qwen-audio-... 格式的音色ID">
-                            <p class="text-xs text-gray-500 mt-1">不填则使用系统默认音色。</p>
+                            <p class="text-xs text-gray-500 mt-1">不填则按性别使用默认音色。</p>
                         </div>
                         <div class="flex justify-end space-x-2">
                             <button @click="showCreateModal = false" class="modal-btn-ghost">取消</button>
@@ -634,6 +915,66 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 大图预览 -->
+                <div v-if="previewImage" class="modal-backdrop" @click="previewImage=''">
+                    <img :src="previewImage" class="max-h-[80vh] max-w-[80vw] rounded-xl shadow-2xl">
+                </div>
+
+                <!-- 表情包选择器 -->
+                <div v-if="showMemePanel" class="modal-backdrop" @click.self="showMemePanel = false">
+                    <div class="meme-panel">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="meme-panel-title">表情包</h3>
+                            <button @click="showMemePanel = false" class="modal-btn-ghost">关闭</button>
+                        </div>
+                        <div class="meme-grid">
+                            <label class="meme-cell meme-add" title="从本地录入表情">
+                                <input type="file" accept="image/*" class="hidden" @change="onAddMeme">
+                                <span class="meme-add-plus">+</span>
+                            </label>
+                            <div v-for="meme in memeList" :key="meme.meme_id" class="meme-cell" @click="pickMeme(meme)">
+                                <img :src="'/memes/' + meme.file_path" class="meme-thumb" loading="lazy">
+                            </div>
+                        </div>
+                        <div v-if="memeList.length === 0" class="text-gray-400 text-sm text-center pt-3">
+                            还没有表情，点左上角 + 从本地录入第一张。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 语音通话界面 -->
+        <div v-if="isInCall" class="call-overlay">
+            <div class="call-top">
+                <div class="call-avatar">{{ currentSessionId.charAt(0) || 'AI' }}</div>
+                <div class="call-name">{{ currentSessionId }}</div>
+                <div class="call-duration">{{ callDuration }}</div>
+            </div>
+
+            <div class="call-status" :class="callStatus">
+                <span class="call-status-dot"></span>
+                <span>{{ statusText }}</span>
+            </div>
+
+            <div class="call-body nice-scroll" id="call-body">
+                <div v-if="callLog.length === 0" class="call-hint">暂无对话记录</div>
+                <div v-for="(item, idx) in callLog" :key="idx"
+                     :class="['call-line', item.role === 'user' ? 'call-line-user' : 'call-line-ai']">
+                    <span class="call-line-role">{{ item.role === 'user' ? '我' : currentSessionId }}</span>
+                    <span class="call-line-text">{{ item.content }}</span>
+                </div>
+            </div>
+
+            <div class="call-bottom">
+                <button @click="hangUpCall" class="call-hangup-btn" title="挂断">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="26" height="26">
+                        <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/>
+                        <line x1="22" y1="2" x2="2" y2="22"/>
+                    </svg>
+                </button>
+                <div class="call-hangup-label">挂断</div>
             </div>
         </div>
     </div>
@@ -649,7 +990,7 @@
     }
 
     const API_BASE = '';
-    const { createApp, ref, onMounted, nextTick } = Vue;
+    const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
     createApp({
         setup() {
@@ -659,6 +1000,10 @@
             const messages = ref([]);
             const inputMessage = ref('');
             const isLoading = ref(false);
+            const previewImage = ref('');
+            const showMemePanel = ref(false);
+            const memeList = ref([]);
+            const pendingMeme = ref(null);
 
             // 人设相关
             const showPersonalityModal = ref(false);
@@ -672,13 +1017,48 @@
             const ws = ref(null);
             const wsReady = ref(false);
             const isAiSpeaking = ref(false);
+            const callLog = ref([]);
+            const callDuration = ref('00:00');
+            const callStatus = ref('connecting'); // connecting | listening | ai-speaking
+            const statusText = computed(() => {
+                if (callStatus.value === 'listening') return '我在听，请开始说话';
+                if (callStatus.value === 'ai-speaking') return `${currentSessionId.value || '对方'} 正在说话，请稍候…`;
+                return '正在准备麦克风…';
+            });
+            let callStartTime = 0;
+            let callTimerId = null;
+            let currentAudio = null;
             const showCreateModal = ref(false);
             const newSessionId = ref('');
             const newVoiceId = ref('');
+            const newGender = ref('女');
+
+            // 性别 → 默认音色映射（手动填写的专属音色优先于此处默认）
+            const GENDER_VOICE = { '女': 'longanhuan_v3.1', '男': 'anmingyuan_v3.1' };
 
             async function apiFetch(path, options = {}) {
                 const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-                return fetch(`${API_BASE}${path}`, { ...options, headers });
+                const token = localStorage.getItem('chatbot_token');
+                if (token) headers['Authorization'] = 'Bearer ' + token;
+                const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+                if (res.status === 401 && !options._retried) {
+                    const t = prompt('需要访问密钥（对应服务端 CHATBOT_API_TOKEN）：');
+                    if (t && t.trim()) {
+                        localStorage.setItem('chatbot_token', t.trim());
+                        return apiFetch(path, { ...options, _retried: true });
+                    }
+                }
+                if (!res.ok) {
+                    let message = `请求失败 (${res.status})`;
+                    try {
+                        const data = await res.json();
+                        message = data.error || data.message || message;
+                    } catch (_) {}
+                    const err = new Error(message);
+                    err.status = res.status;
+                    throw err;
+                }
+                return res;
             }
 
             //  会话管理 
@@ -703,13 +1083,16 @@
                     return;
                 }
 
+                // 音色优先级：手动填写的专属音色 > 性别默认音色
+                const voiceId = newVoiceId.value.trim() || (GENDER_VOICE[newGender.value] || '');
+
                 try {
                     await apiFetch('/api/sessions', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                             session_id: newSessionId.value.trim(),
-                            voice_id: newVoiceId.value.trim() // 把音色传给后端
+                            voice_id: voiceId // 解析后的音色（手动 > 性别默认）
                         })
                     });
                     showCreateModal.value = false;
@@ -737,6 +1120,7 @@
             const createNewSession = () => {
                 newSessionId.value = '';
                 newVoiceId.value = '';
+                newGender.value = '女';
                 showCreateModal.value = true;
             };
 
@@ -763,32 +1147,44 @@
             // 清空会话记忆
             const clearHistory = async () => {
                 if (confirm("确定清空当前会话的记忆吗？")) {
-                    await apiFetch('/api/clear', {
-                        method: 'POST',
-                        body: JSON.stringify({ session_id: currentSessionId.value })
-                    });
-                    messages.value = [];
-                    fetchSessions();
+                    try {
+                        await apiFetch('/api/clear', {
+                            method: 'POST',
+                            body: JSON.stringify({ session_id: currentSessionId.value })
+                        });
+                        messages.value = [];
+                        fetchSessions();
+                    } catch (e) {
+                        alert('清空记忆失败：' + (e.message || '网络错误'));
+                    }
                 }
             };
 
             // 更新会话性格
             const updatePersonality = async () => {
-                await apiFetch('/api/personality', {
-                    method: 'POST',
-                    body: JSON.stringify({ session_id: currentSessionId.value, prompt: tempPersonality.value })
-                });
-                showPersonalityModal.value = false;
-                fetchSessions();
+                try {
+                    await apiFetch('/api/personality', {
+                        method: 'POST',
+                        body: JSON.stringify({ session_id: currentSessionId.value, prompt: tempPersonality.value })
+                    });
+                    showPersonalityModal.value = false;
+                    fetchSessions();
+                } catch (e) {
+                    alert('保存人设失败：' + (e.message || '网络错误'));
+                }
             };
 
             // 打开会话总结
             const openSummary = async () => {
                 if (!currentSessionId.value) return;
-                const res = await apiFetch(`/api/summary?session_id=${currentSessionId.value}`);
-                const data = await res.json();
-                currentSummary.value = data.summary;
-                showSummaryModal.value = true;
+                try {
+                    const res = await apiFetch(`/api/summary?session_id=${currentSessionId.value}`);
+                    const data = await res.json();
+                    currentSummary.value = data.summary;
+                    showSummaryModal.value = true;
+                } catch (e) {
+                    alert('获取摘要失败：' + (e.message || '网络错误'));
+                }
             };
 
             // 更新本地会话预览
@@ -825,31 +1221,121 @@
 
             // 文字聊天 
             const sendMessage = async () => {
-                if (!inputMessage.value.trim() || !currentSessionId.value) return;
-
                 const userText = inputMessage.value.trim();
-                messages.value.push({ role: 'user', content: userText });
+                const meme = pendingMeme.value;
+                if ((!userText && !meme) || !currentSessionId.value) return;
+
+                messages.value.push({
+                    role: 'user',
+                    content: userText,
+                    image_url: meme ? '/memes/' + meme.file_path : null
+                });
                 inputMessage.value = '';
+                pendingMeme.value = null;
                 isLoading.value = true;
                 scrollToBottom();
 
-                updateLocalSessionPreview(currentSessionId.value, userText);
+                updateLocalSessionPreview(currentSessionId.value, userText || '[图片]');
+
+                // 文本 + 表情包提示一起发给模型
+                let chatText = userText;
+                if (meme) {
+                    chatText += (chatText ? ' ' : '') + '[用户发了一张表情包：' + (meme.tags || '未知标签') + ']';
+                }
 
                 try {
                     const res = await apiFetch('/api/chat', {
                         method: 'POST',
-                        body: JSON.stringify({ session_id: currentSessionId.value, message: userText })
+                        body: JSON.stringify({
+                            session_id: currentSessionId.value,
+                            message: chatText,
+                            image_url: meme ? '/memes/' + meme.file_path : ''
+                        })
                     });
-                    const data = await res.json();
-                    messages.value.push({ role: 'assistant', content: data.reply, isPlaying: false });
-                    updateLocalSessionPreview(currentSessionId.value, data.reply);
+
+                    // 流式读取 SSE，逐字追加到 AI 气泡
+                    messages.value.push({ role: 'assistant', content: '',
+                                          image_url: null, isPlaying: false });
+                    const idx = messages.value.length - 1;
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let buf = '';
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buf += decoder.decode(value, { stream: true });
+                        let sep;
+                        while ((sep = buf.indexOf('\n\n')) >= 0) {
+                            const evt = buf.slice(0, sep);
+                            buf = buf.slice(sep + 2);
+                            for (const line of evt.split('\n')) {
+                                if (line.indexOf('data: ') !== 0) continue;
+                                const payload = line.slice(6);
+                                if (payload === '[DONE]') continue;
+                                let ev;
+                                try { ev = JSON.parse(payload); } catch (_) { continue; }
+                                if (typeof ev.content === 'string') {
+                                    messages.value[idx].content += ev.content;
+                                }
+                                if (typeof ev.final_content === 'string') {
+                                    messages.value[idx].content = ev.final_content;
+                                }
+                                if (ev.image_url) messages.value[idx].image_url = ev.image_url;
+                                if (ev.error) messages.value[idx].content += '\n[错误] ' + ev.error;
+                            }
+                            scrollToBottom();
+                        }
+                    }
+                    updateLocalSessionPreview(currentSessionId.value, messages.value[idx].content);
                 } catch (e) {
-                    messages.value.push({ role: 'assistant', content: '网络错误，请检查后端。' });
+                    messages.value.push({ role: 'assistant', content: '请求失败：' + (e.message || '网络错误') });
                 } finally {
                     isLoading.value = false;
                     scrollToBottom();
                     fetchSessions();
                 }
+            };
+
+            // 从本地选图录入素材库（“+”加号入口）
+            const onAddMeme = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    try {
+                        await apiFetch('/api/upload_image', {
+                            method:'POST',
+                            body: JSON.stringify({ data_url: reader.result, session_id: currentSessionId.value || '' })
+                        });
+                        // 刷新网格，让刚录入的表情立刻显示
+                        const res = await apiFetch('/api/memes');
+                        memeList.value = await res.json();
+                    } catch (err) {
+                        // 录入失败：网格保持不变
+                    }
+                    e.target.value = '';
+                };
+                reader.readAsDataURL(file);
+            };
+
+            // 表情包选择器：拉列表 + 点选发送
+            const toggleMemePanel = async () => {
+                if (showMemePanel.value) {
+                    showMemePanel.value = false;
+                    return;
+                }
+                showMemePanel.value = true;
+                try {
+                    const res = await apiFetch('/api/memes');
+                    memeList.value = await res.json();
+                } catch (e) {
+                    memeList.value = [];
+                }
+            };
+
+            const pickMeme = (meme) => {
+                showMemePanel.value = false;
+                pendingMeme.value = meme;   // 暂存到输入区，不立即发送
             };
 
             // 手动播放AI消息 
@@ -917,7 +1403,12 @@
             // 建立WebSocket通道
                         const connectVoiceChannel = async () => {
                 try {
-                    const wsUrl = `ws://${window.location.hostname}:8081/voice`;
+                    const token = localStorage.getItem('chatbot_token');
+                    const securePage = window.location.protocol === 'https:';
+                    const wsBase = securePage
+                        ? `wss://${window.location.host}/voice`
+                        : `ws://${window.location.hostname}:8081/voice`;
+                    const wsUrl = wsBase + (token ? `?token=${encodeURIComponent(token)}` : '');
                     ws.value = new WebSocket(wsUrl);
 
                     ws.value.onopen = () => {
@@ -936,6 +1427,8 @@
                     ws.value.onclose = () => {
                         wsReady.value = false;
                         isInCall.value = false;
+                        callStatus.value = 'connecting';
+                        stopCallTimer();
                     };
                 } catch (error) {
                     console.error("连接语音通道失败:", error);
@@ -944,44 +1437,77 @@
 
             // 处理服务端返回
             const handleVoiceMessage = (data) => {
+                if (!isInCall.value) return;
+
                 if (data.type === 'reply') {
-                    messages.value.push({
+                    callLog.value.push({
                         role: 'assistant',
-                        content: data.text || '无响应',
-                        isPlaying: false
+                        content: data.text || '无响应'
                     });
-                    scrollToBottom();
-                    updateLocalSessionPreview(currentSessionId.value, data.text);
+                    scrollCallLog();
 
                     isAiSpeaking.value = true;
+                    callStatus.value = 'ai-speaking';
                     if (recognition.value) {
                         try { recognition.value.stop(); } catch (e) {}
                     }
 
-                    const resumeRecognition = () => {
+                    const finishSpeaking = () => {
                         isAiSpeaking.value = false;
                         if (isInCall.value && recognition.value) {
+                            callStatus.value = 'connecting';
                             try { recognition.value.start(); } catch (e) {}
                         }
                     };
 
                     if (data.audio_url) {
+                        if (currentAudio) {
+                            try { currentAudio.pause(); } catch (e) {}
+                            currentAudio.onended = null;
+                            currentAudio.onerror = null;
+                        }
                         const audio = new Audio(data.audio_url);
-                        audio.onended = resumeRecognition;
+                        currentAudio = audio;
+                        audio.onended = () => { if (currentAudio === audio) currentAudio = null; finishSpeaking(); };
                         audio.onerror = () => {
                             console.error('音频播放失败');
-                            resumeRecognition();
+                            if (currentAudio === audio) currentAudio = null;
+                            finishSpeaking();
                         };
                         audio.play().catch(e => {
                             console.error('播放错误', e);
-                            resumeRecognition();
+                            if (currentAudio === audio) currentAudio = null;
+                            finishSpeaking();
                         });
                     } else {
-                        resumeRecognition();
+                        finishSpeaking();
                     }
                 } else if (data.type === 'error') {
                     console.error('服务端错误:', data.message);
                 }
+            };
+
+            // 通话计时与日志滚动
+            const startCallTimer = () => {
+                callStartTime = Date.now();
+                callDuration.value = '00:00';
+                clearInterval(callTimerId);
+                callTimerId = setInterval(() => {
+                    const totalSec = Math.floor((Date.now() - callStartTime) / 1000);
+                    const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+                    const s = String(totalSec % 60).padStart(2, '0');
+                    callDuration.value = `${m}:${s}`;
+                }, 1000);
+            };
+            const stopCallTimer = () => {
+                clearInterval(callTimerId);
+                callTimerId = null;
+            };
+            const scrollCallLog = () => {
+                nextTick(() => {
+                    const box = document.getElementById('call-body');
+                    if (box) box.scrollTop = box.scrollHeight;
+                });
             };
 
             // 开始通话
@@ -1017,14 +1543,18 @@
                     if (!text) return;
                     console.log("识别到的文本:", text);
 
-                    messages.value.push({ role: 'user', content: text });
-                    scrollToBottom();
+                    callLog.value.push({ role: 'user', content: text });
+                    scrollCallLog();
 
                     ws.value.send(JSON.stringify({
                         type: 'chat',
                         text: text,
                         session_id: currentSessionId.value
                     }));
+                };
+
+                rec.onstart = () => {
+                    callStatus.value = 'listening';
                 };
 
                 rec.onerror = (e) => {
@@ -1044,9 +1574,12 @@
                 };
 
                 try {
+                    callStatus.value = 'connecting';
                     rec.start();
                     recognition.value = rec;
                     isInCall.value = true;
+                    callLog.value = [];
+                    startCallTimer();
                 } catch (e) {
                     console.error('启动识别错误:', e);
                 }
@@ -1058,8 +1591,17 @@
                     try { recognition.value.stop(); } catch (e) {}
                     recognition.value = null;
                 }
+                // 立即停止正在播放的 AI 语音
+                if (currentAudio) {
+                    try { currentAudio.pause(); } catch (e) {}
+                    currentAudio.onended = null;
+                    currentAudio.onerror = null;
+                    currentAudio = null;
+                }
                 isAiSpeaking.value = false;
                 isInCall.value = false;
+                callStatus.value = 'connecting';
+                stopCallTimer();
             };
 
             const toggleVoiceCall = () => {
@@ -1082,7 +1624,11 @@
                 showPersonalityModal, showSummaryModal, tempPersonality, currentSummary,
                 switchSession, createNewSession, sendMessage, updatePersonality,
                 clearHistory, openSummary, deleteSession, formatTime, playVoice,
-                isInCall, toggleVoiceCall, showCreateModal, newSessionId, newVoiceId, submitNewSession
+                isInCall, toggleVoiceCall, hangUpCall, callLog, callDuration,
+                callStatus, statusText,
+                showCreateModal, newSessionId, newVoiceId, submitNewSession,
+                previewImage, onAddMeme, showMemePanel, memeList, pendingMeme,
+                toggleMemePanel, pickMeme
             };
         }
     }).mount('#app');

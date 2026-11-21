@@ -1,0 +1,18 @@
+[
+  {"file_path": "touxiao.jpg",  "tags": "开心,得意",  "description": "偷笑的可爱表情", "text_on_image": ""},
+  {"file_path": "maimeng.jpg",  "tags": "开心,害羞",  "description": "卖萌撒娇的表情", "text_on_image": ""},
+  {"file_path": "keai.jpg",     "tags": "开心,安慰",  "description": "可爱乖巧的表情", "text_on_image": ""},
+  {"file_path": "chibaozi.jpg", "tags": "开心",      "description": "开心吃包子的表情", "text_on_image": ""},
+  {"file_path": "weiqu.jpg",    "tags": "委屈",      "description": "委屈巴巴的表情", "text_on_image": ""},
+  {"file_path": "haixiu.jpg",   "tags": "害羞",      "description": "害羞脸红的表情", "text_on_image": ""},
+  {"file_path": "kaixin.jpg",   "tags": "开心",      "description": "开心大笑的表情", "text_on_image": ""},
+  {"file_path": "xinxu.jpg",    "tags": "尴尬,委屈",  "description": "心虚躲闪的表情", "text_on_image": ""},
+  {"file_path": "jingxi.jpg",   "tags": "开心",      "description": "惊喜意外的表情", "text_on_image": ""},
+  {"file_path": "motou.jpg",    "tags": "安慰",      "description": "摸头安慰的表情", "text_on_image": ""},
+  {"file_path": "molian.jpg",   "tags": "安慰,害羞",  "description": "摸脸亲近的表情", "text_on_image": ""},
+  {"file_path": "wuyu.jpg",     "tags": "无语",      "description": "无语的表情", "text_on_image": ""},
+  {"file_path": "biye.jpg",     "tags": "开心,得意",  "description": "比耶得意的表情", "text_on_image": ""},
+  {"file_path": "yihuo.jpg",    "tags": "无语",      "description": "疑惑不解的表情", "text_on_image": ""},
+  {"file_path": "keshui.jpg",   "tags": "敷衍,无语",  "description": "打瞌睡敷衍的表情", "text_on_image": ""},
+  {"file_path": "yinchen.jpg",  "tags": "生气,无语",  "description": "阴沉生气的表情", "text_on_image": ""}
+]

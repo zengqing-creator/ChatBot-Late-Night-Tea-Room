@@ -3,6 +3,7 @@
 #include <functional>
 
 class Conversation;
+class SQLiteDB;
 
 extern const std::string API_KEY;
 extern const std::string API_ENDPOINT;
@@ -11,12 +12,23 @@ extern const std::string VOICE_ID;
 
 std::string get_current_time(const std::string& format = "YYYY-MM-DD HH:MM:SS");
 json get_tools_definition();
-std::string call_ai_with_tools(Conversation& conv, std::function<void(const std::string&)> on_chunk = nullptr);
+std::string call_ai_with_tools(Conversation& conv, std::function<void(const std::string&)> on_chunk = nullptr,
+                               std::string* out_image_url = nullptr);
 
 extern std::map<std::string, std::function<std::string(const json&)>> tool_functions;
 
 std::string call_llm_sync(const std::string& prompt);
 
+std::string call_vision(const std::string& image_data_url);
+
 std::vector<float> get_embedding(const std::string& text);
 
+std::string stripNarration(const std::string& text);
+
 std::string synthesize_speech(const std::string& api_key,const std::string& voice_id, const std::string& text);
+
+void enqueue_embedding_job(std::shared_ptr<SQLiteDB> db, int msg_id,
+                           const std::string& session_id, const std::string& user_id,
+                           const std::string& content);
+
+void shutdown_embedding_worker();

@@ -1,0 +1,7 @@
+# Copy to Caddyfile on the ECS, then replace chat.example.com with your domain.
+# Point the domain A record to the ECS EIP and allow inbound TCP 80 and 443.
+chat.example.com {
+    @voice path /voice
+    reverse_proxy @voice 127.0.0.1:8081
+    reverse_proxy 127.0.0.1:8080
+}

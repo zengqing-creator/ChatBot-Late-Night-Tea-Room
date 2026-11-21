@@ -28,6 +28,5 @@
 // 第三方库
 #include "httplib.h"
 #include "json.hpp"
-#include "sqlite3.h"
 
 using json = nlohmann::json;
